@@ -56,6 +56,7 @@ If you cannot generate a search query, return just the number 0.
         self.sourcepage_field = sourcepage_field
         self.content_field = content_field
         self.chatgpt_token_limit = get_token_limit(chatgpt_model)
+        
 
     async def run(self, history: list[dict[str, str]], overrides: dict[str, Any]) -> Any:
         has_text = overrides.get("retrieval_mode") in ["text", "hybrid", None]
@@ -78,8 +79,8 @@ If you cannot generate a search query, return just the number 0.
             )
 
         chat_completion = await openai.ChatCompletion.acreate(
-            deployment_id=self.chatgpt_deployment,
-            model=self.chatgpt_model,
+            engine=self.chatgpt_deployment,
+            #model=self.chatgpt_model,
             messages=messages,
             temperature=0.0,
             max_tokens=32,

@@ -8,6 +8,7 @@ import openai
 from azure.identity.aio import DefaultAzureCredential
 from azure.search.documents.aio import SearchClient
 from azure.storage.blob.aio import BlobServiceClient
+from azure.core.credentials import AzureKeyCredential
 from quart import (
     Blueprint,
     Quart,
@@ -26,14 +27,18 @@ from approaches.retrievethenread import RetrieveThenReadApproach
 
 # Replace these with your own values, either in environment variables or directly here
 AZURE_STORAGE_ACCOUNT = os.getenv("AZURE_STORAGE_ACCOUNT", "mystorageaccount")
+AZURE_STORAGE_KEY = os.getenv("AZURE_STORAGE_KEY", None)
 AZURE_STORAGE_CONTAINER = os.getenv("AZURE_STORAGE_CONTAINER", "content")
 AZURE_SEARCH_SERVICE = os.getenv("AZURE_SEARCH_SERVICE", "gptkb")
 AZURE_SEARCH_INDEX = os.getenv("AZURE_SEARCH_INDEX", "gptkbindex")
+AZURE_SEARCH_SERVICE_KEY = os.getenv("AZURE_SEARCH_SERVICE_KEY", None)
 AZURE_OPENAI_SERVICE = os.getenv("AZURE_OPENAI_SERVICE", "myopenai")
 AZURE_OPENAI_GPT_DEPLOYMENT = os.getenv("AZURE_OPENAI_GPT_DEPLOYMENT", "davinci")
 AZURE_OPENAI_CHATGPT_DEPLOYMENT = os.getenv("AZURE_OPENAI_CHATGPT_DEPLOYMENT", "chat")
 AZURE_OPENAI_CHATGPT_MODEL = os.getenv("AZURE_OPENAI_CHATGPT_MODEL", "gpt-35-turbo")
 AZURE_OPENAI_EMB_DEPLOYMENT = os.getenv("AZURE_OPENAI_EMB_DEPLOYMENT", "embedding")
+AZURE_OPENAI_TOKEN = os.getenv("AZURE_OPENAI_TOKEN", None)
+
 
 KB_FIELDS_CONTENT = os.getenv("KB_FIELDS_CONTENT", "content")
 KB_FIELDS_CATEGORY = os.getenv("KB_FIELDS_CATEGORY", "category")
@@ -111,6 +116,7 @@ async def chat():
 
 @bp.before_request
 async def ensure_openai_token():
+    if AZURE_OPENAI_TOKEN is not None: return
     openai_token = current_app.config[CONFIG_OPENAI_TOKEN]
     if openai_token.expires_on < time.time() + 60:
         openai_token = await current_app.config[CONFIG_CREDENTIAL].get_token("https://cognitiveservices.azure.com/.default")
@@ -125,15 +131,20 @@ async def setup_clients():
     # keys for each service
     # If you encounter a blocking error during a DefaultAzureCredntial resolution, you can exclude the problematic credential by using a parameter (ex. exclude_shared_token_cache_credential=True)
     azure_credential = DefaultAzureCredential(exclude_shared_token_cache_credential = True)
-
+    search_crendential = None
+    storage_credential = None
+    if AZURE_SEARCH_SERVICE_KEY:
+        search_crendential = AzureKeyCredential(AZURE_SEARCH_SERVICE_KEY)
+    if AZURE_STORAGE_KEY:
+        storage_credential = AzureKeyCredential(AZURE_STORAGE_KEY)
     # Set up clients for Cognitive Search and Storage
     search_client = SearchClient(
         endpoint=f"https://{AZURE_SEARCH_SERVICE}.search.windows.net",
         index_name=AZURE_SEARCH_INDEX,
-        credential=azure_credential)
+        credential= search_crendential or azure_credential)
     blob_client = BlobServiceClient(
         account_url=f"https://{AZURE_STORAGE_ACCOUNT}.blob.core.windows.net",
-        credential=azure_credential)
+        credential= storage_credential or azure_credential)
 
     # Used by the OpenAI SDK
     openai.api_base = f"https://{AZURE_OPENAI_SERVICE}.openai.azure.com"
@@ -143,6 +154,12 @@ async def setup_clients():
         "https://cognitiveservices.azure.com/.default"
     )
     openai.api_key = openai_token.token
+
+    if AZURE_OPENAI_TOKEN is not None:
+        openai.api_type = "azure"
+        openai.api_version = "2023-03-15-preview"
+        openai.api_key = AZURE_OPENAI_TOKEN
+    
 
     # Store on app.config for later use inside requests
     current_app.config[CONFIG_OPENAI_TOKEN] = openai_token
