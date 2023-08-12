@@ -123,9 +123,19 @@ If you cannot generate a search query, return just the number 0.
                                           top_k=50 if query_vector else None,
                                           vector_fields="embedding" if query_vector else None)
         if use_semantic_captions:
-            results = [doc[self.sourcepage_field] + ": " + nonewlines(" . ".join([c.text for c in doc['@search.captions']])) async for doc in r]
+            #results = [doc[self.sourcepage_field] + ": " + nonewlines(" . ".join([c.text for c in doc['@search.captions']])) async for doc in r]
+            results = []
+            async for doc in r:
+                result = doc[self.sourcepage_field] + ": " + nonewlines(" . ".join([c.text for c in doc['@search.captions']]))
+                if result not in results:
+                    results.append(result)
         else:
-            results = [doc[self.sourcepage_field] + ": " + nonewlines(doc[self.content_field]) async for doc in r]
+            #results = [doc[self.sourcepage_field] + ": " + nonewlines(doc[self.content_field]) async for doc in r]
+            results = []
+            async for doc in r:
+                result = doc[self.sourcepage_field] + ": " + nonewlines(doc[self.content_field])
+                if result not in results:
+                    results.append(result)
         content = "\n".join(results)
 
         follow_up_questions_prompt = self.follow_up_questions_prompt_content if overrides.get("suggest_followup_questions") else ""

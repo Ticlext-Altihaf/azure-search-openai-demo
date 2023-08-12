@@ -135,8 +135,6 @@ async def setup_clients():
     storage_credential = None
     if AZURE_SEARCH_SERVICE_KEY:
         search_crendential = AzureKeyCredential(AZURE_SEARCH_SERVICE_KEY)
-    if AZURE_STORAGE_KEY:
-        storage_credential = AzureKeyCredential(AZURE_STORAGE_KEY)
     # Set up clients for Cognitive Search and Storage
     search_client = SearchClient(
         endpoint=f"https://{AZURE_SEARCH_SERVICE}.search.windows.net",
@@ -144,7 +142,7 @@ async def setup_clients():
         credential= search_crendential or azure_credential)
     blob_client = BlobServiceClient(
         account_url=f"https://{AZURE_STORAGE_ACCOUNT}.blob.core.windows.net",
-        credential= storage_credential or azure_credential)
+        credential= AZURE_STORAGE_KEY or azure_credential)
 
     # Used by the OpenAI SDK
     openai.api_base = f"https://{AZURE_OPENAI_SERVICE}.openai.azure.com"
