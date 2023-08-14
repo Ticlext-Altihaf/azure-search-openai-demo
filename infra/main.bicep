@@ -169,7 +169,10 @@ module openAi 'core/ai/cognitiveservices.bicep' = {
           name: embeddingModelName
           version: '2'
         }
-        capacity: embeddingDeploymentCapacity
+        sku: {
+          name: 'Standard'
+          capacity: embeddingDeploymentCapacity
+        }
       }
     ]
   }
