@@ -308,7 +308,7 @@ if __name__ == "__main__":
         description="Prepare documents by extracting content from PDFs, splitting content into sections, uploading to blob storage, and indexing in a search index.",
         epilog="Example: prepdocs.py '..\data\*' --storageaccount myaccount --container mycontainer --searchservice mysearch --index myindex -v"
         )
-    parser.add_argument("files", help="Files to be processed")
+    parser.add_argument("files", help="Files to be processed", default="*../data/*")
     parser.add_argument("--category", help="Value for the category field in the search index for all sections indexed in this run")
     parser.add_argument("--skipblobs", action="store_true", help="Skip uploading individual pages to Azure Blob Storage")
     parser.add_argument("--storageaccount", help="Azure Blob Storage account name")
@@ -341,9 +341,10 @@ if __name__ == "__main__":
     if not args.localpdfparser:
         # check if Azure Form Recognizer credentials are provided
         if args.formrecognizerservice is None:
-            print("Error: Azure Form Recognizer service is not provided. Please provide formrecognizerservice or use --localpdfparser for local pypdf parser.")
-            exit(1)
-        formrecognizer_creds = default_creds if args.formrecognizerkey is None else AzureKeyCredential(args.formrecognizerkey)
+            args.localpdfparser = True
+            print("No Azure Form Recognizer service provided, using local PDF parser")
+        else:
+            formrecognizer_creds = default_creds if args.formrecognizerkey is None else AzureKeyCredential(args.formrecognizerkey)
 
     if use_vectors:
         if args.openaikey is None:
